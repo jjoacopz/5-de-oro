@@ -130,6 +130,15 @@ textarea { width: 100%; min-height: 160px; resize: vertical; font-variant-numeri
   background: var(--hit-soft); color: var(--hit); white-space: nowrap;
 }
 .pill.win { background: var(--gold); color: #1d1b16; }
+.prizes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.prize { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 4px; align-content: start; min-width: 0; }
+.prize.got { background: var(--gold-soft); border-color: var(--gold); }
+.prize .tier { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.prize.got .tier { color: var(--gold-ink); }
+.prize b { font-family: var(--font-display); font-size: 2rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.prize .who { font-size: .85rem; overflow-wrap: anywhere; }
+.prize.got .who { color: var(--gold-ink); font-weight: 600; }
+.ticket.got { border-color: var(--gold); }
 .empty { color: var(--muted); text-align: center; padding: 18px; border: 1px dashed var(--line); border-radius: 12px; }
 .note { font-size: .85rem; color: var(--muted); margin: 0; }
 .error { color: var(--danger); font-size: .88rem; margin: 0; }
@@ -138,7 +147,10 @@ textarea { width: 100%; min-height: 160px; resize: vertical; font-variant-numeri
 @media (max-width: 480px) {
   .slot { width: 46px; height: 46px; font-size: 1.35rem; }
   .board { grid-template-columns: repeat(6, 1fr); }
-  .summary .stat b { font-size: 1.6rem; }
+  .summary .stat b, .prize b { font-size: 1.6rem; }
+  .prizes { grid-template-columns: 1fr; }
+  .prize { grid-template-columns: auto 1fr; column-gap: 12px; align-items: center; }
+  .prize b { grid-row: span 2; }
 }
 </style>
 </head>
@@ -174,14 +186,20 @@ textarea { width: 100%; min-height: 160px; resize: vertical; font-variant-numeri
       <div class="row">
         <label for="goal" class="note">Mostrar jugadas con chance de</label>
         <select id="goal">
-          <option value="5">5 aciertos</option>
-          <option value="4">4 o más aciertos</option>
           <option value="3">3 o más aciertos</option>
+          <option value="4">4 o más aciertos</option>
+          <option value="5">5 aciertos</option>
         </select>
         <span class="spacer"></span>
         <span id="reset-zone"><button type="button" class="danger" id="reset">Reiniciar sorteo</button></span>
       </div>
     </div>
+  </section>
+
+  <section aria-labelledby="h-prem">
+    <h2 id="h-prem">Premios en este sorteo</h2>
+    <div class="prizes" id="prizes" aria-live="polite"></div>
+    <p class="note" id="prize-note"></p>
   </section>
 
   <section aria-labelledby="h-res">
@@ -215,10 +233,12 @@ textarea { width: 100%; min-height: 160px; resize: vertical; font-variant-numeri
   const DEFAULT_TICKETS = "Jugada 1: 01-05-06-19-30\nJugada 2: 01-07-10-29-39\nJugada 3: 01-09-27-32-48\nJugada 4: 01-12-23-28-46\nJugada 5: 01-22-27-35-43\nJugada 6: 01-22-35-42-48\nJugada 7: 02-05-20-33-40\nJugada 8: 02-25-26-31-44\nJugada 9: 03-12-24-43-45\nJugada 10: 03-21-25-38-41\nJugada 11: 03-22-37-42-43\nJugada 12: 04-15-18-28-32\nJugada 13: 04-28-33-38-46\nJugada 14: 05-07-11-19-33\nJugada 15: 05-19-26-32-38\nJugada 16: 06-09-22-25-38\nJugada 17: 06-14-20-41-42\nJugada 18: 06-36-40-45-48\nJugada 19: 07-10-14-28-32\nJugada 20: 07-13-21-29-31\nJugada 21: 09-10-14-20-33\nJugada 22: 09-10-25-38-47\nJugada 23: 09-11-18-31-44\nJugada 24: 09-16-35-39-45\nJugada 25: 10-12-24-43-46\nJugada 26: 10-19-28-34-42\nJugada 27: 11-13-17-21-35\nJugada 28: 11-14-22-31-43\nJugada 29: 11-15-33-36-41\nJugada 30: 11-30-32-44-45\nJugada 31: 12-25-27-31-38\nJugada 32: 13-16-22-25-26\nJugada 33: 14-24-32-44-48\nJugada 34: 15-18-27-42-46\nJugada 35: 16-19-30-41-43\nJugada 36: 16-26-29-39-45\nJugada 37: 19-22-38-39-46\nJugada 38: 21-25-27-29-31\nJugada 39: 22-23-26-29-44\nJugada 40: 24-26-36-40-42\nJugada 41: 29-34-35-36-47\nJugada 42: 01-07-19-32-38\nJugada 43: 02-07-17-44-47\nJugada 44: 03-09-12-20-43\nJugada 45: 03-13-23-26-29\nJugada 46: 04-07-24-25-43\nJugada 47: 05-11-16-44-47\nJugada 48: 05-14-29-31-36\nJugada 49: 06-12-15-30-40\nJugada 50: 06-20-21-32-47\nJugada 51: 09-13-15-29-47\nJugada 52: 09-22-26-38-43\nJugada 53: 12-19-20-39-40\nJugada 54: 13-14-17-19-30\nJugada 55: 13-14-38-42-48\nJugada 56: 17-19-27-29-40\nJugada 57: 17-29-32-45-46\nJugada 58: 18-31-33-38-43\nRivi: 04-12-18-25-33\nJoacopz: 20-46-17-24-04\nSalva: 29-11-08-18-05\nRabo: 37-21-08-15-05\nFerdez: 14-23-02-08-05\nJuntadita: 23-21-27-04-01";
   const $ = (id) => document.getElementById(id);
 
-  let state = { tickets: DEFAULT_TICKETS, draw: "oro", drawn: { oro: [], revancha: [] }, goal: 5 };
+  let state = { tickets: DEFAULT_TICKETS, draw: "oro", drawn: { oro: [], revancha: [] }, goals: { oro: 3, revancha: 5 } };
   try {
     const saved = JSON.parse(localStorage.getItem(KEY) || "null");
     if (saved) state = Object.assign(state, saved);
+    if (!state.goals) state.goals = { oro: 3, revancha: 5 };
+    delete state.goal;
     if (!String(state.tickets || "").trim()) state.tickets = DEFAULT_TICKETS;
   } catch (e) {}
   let lastAdded = null;
@@ -270,7 +290,7 @@ textarea { width: 100%; min-height: 160px; resize: vertical; font-variant-numeri
     const { tickets } = parseTickets(state.tickets);
     const mine = new Set(tickets.flatMap((t) => t.nums));
     const left = PICK - drawn.length;
-    const goal = Number(state.goal);
+    const goal = Number(state.goals[state.draw]);
 
     document.querySelectorAll(".tabs button").forEach((b) =>
       b.setAttribute("aria-selected", String(b.dataset.draw === state.draw)));
@@ -305,6 +325,22 @@ textarea { width: 100%; min-height: 160px; resize: vertical; font-variant-numeri
       const best = Math.min(PICK, hits + Math.min(left, t.nums.length - hits));
       return { ...t, hits, alive: best >= goal };
     });
+    const prizes = $("prizes"); prizes.innerHTML = "";
+    [5, 4, 3].forEach((k) => {
+      const winners = scored.filter((t) => t.hits === k);
+      const box = document.createElement("div");
+      box.className = "prize" + (winners.length ? " got" : "");
+      const b = document.createElement("b"); b.textContent = winners.length;
+      const tier = document.createElement("span"); tier.className = "tier"; tier.textContent = `${k} aciertos`;
+      const who = document.createElement("span"); who.className = "who";
+      who.textContent = winners.length ? winners.map((t) => t.name).join(", ") : "Ninguna por ahora";
+      box.append(b, tier, who);
+      prizes.appendChild(box);
+    });
+    $("prize-note").textContent = state.draw === "revancha"
+      ? "En la Revancha solo se paga con 5 aciertos."
+      : "En el Oro hay premio desde 3 aciertos.";
+
     const alive = scored.filter((t) => t.alive).sort((a, b) => b.hits - a.hits);
 
     $("s-alive").textContent = alive.length;
@@ -319,7 +355,7 @@ textarea { width: 100%; min-height: 160px; resize: vertical; font-variant-numeri
     }
     alive.forEach((t) => {
       const row = document.createElement("div");
-      row.className = "ticket";
+      row.className = "ticket" + (t.hits >= 3 ? " got" : "");
       const name = document.createElement("div");
       name.className = "name"; name.textContent = t.name;
       const nums = document.createElement("div");
@@ -332,10 +368,12 @@ textarea { width: 100%; min-height: 160px; resize: vertical; font-variant-numeri
       });
       const pill = document.createElement("span");
       const done = left === 0;
-      pill.className = "pill" + (done && t.hits >= goal ? " win" : "");
-      pill.textContent = done
-        ? `${t.hits} acierto${t.hits === 1 ? "" : "s"}`
-        : `${t.hits} de ${drawn.length} · le faltan ${Math.max(0, goal - t.hits)}`;
+      pill.className = "pill" + (t.hits >= 3 ? " win" : "");
+      pill.textContent = t.hits >= 3
+        ? `¡${t.hits} aciertos!`
+        : done
+          ? `${t.hits} acierto${t.hits === 1 ? "" : "s"}`
+          : `${t.hits} de ${drawn.length} · le faltan ${Math.max(0, goal - t.hits)}`;
       row.append(name, nums, pill);
       list.appendChild(row);
     });
@@ -354,7 +392,7 @@ textarea { width: 100%; min-height: 160px; resize: vertical; font-variant-numeri
   });
   document.querySelectorAll(".tabs button").forEach((b) =>
     b.addEventListener("click", () => { state.draw = b.dataset.draw; lastAdded = null; persist(); render(); }));
-  $("goal").addEventListener("change", (e) => { state.goal = Number(e.target.value); persist(); render(); });
+  $("goal").addEventListener("change", (e) => { state.goals[state.draw] = Number(e.target.value); persist(); render(); });
 
   // Confirmación dentro de la página (el navegador del artifact no muestra confirm()).
   $("reset-zone").addEventListener("click", (e) => {
