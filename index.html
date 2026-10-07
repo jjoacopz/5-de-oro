@@ -152,24 +152,33 @@ textarea { width: 100%; min-height: 160px; resize: vertical; font-variant-numeri
   .prize { grid-template-columns: auto 1fr; column-gap: 12px; align-items: center; }
   .prize b { grid-row: span 2; }
 }
+
+.slot.extra { border-color: var(--hit); }
+.slot.extra.filled { background: radial-gradient(circle at 32% 28%, #e6f7ec 0 12%, var(--hit) 60%, #145234 100%); color: #fff; }
+.slot-wrap { display: grid; justify-items: center; gap: 2px; }
+.slot-wrap small { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+.ball.extra-on { background: var(--hit); border-color: var(--hit); color: #fff; font-weight: 800; }
+.n.extra { background: var(--surface); border: 2px solid var(--hit); color: var(--hit); }
+.banner { border-radius: 12px; padding: 12px 14px; background: var(--gold-soft); color: var(--gold-ink); font-weight: 600; }
+.ticket .prize-tag { display: grid; justify-items: end; gap: 2px; margin-left: auto; text-align: right; }
+.ticket .prize-tag b { font-family: var(--font-display); font-size: 1.4rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.ticket .prize-tag span { font-size: .8rem; color: var(--muted); }
+.paytable { width: 100%; border-collapse: collapse; font-size: .9rem; font-variant-numeric: tabular-nums; }
+.paytable td { padding: 6px 0; border-bottom: 1px solid var(--line); }
+.paytable td:last-child { text-align: right; font-weight: 600; }
+.paytable tr:last-child td { border-bottom: 0; }
+details summary { cursor: pointer; font-weight: 600; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <h1>Mis jugadas <span>5 de Oro</span></h1>
-    <p>Marcá las bolillas a medida que salen. Solo te quedan a la vista las jugadas que todavía pueden ganar.</p>
+    <p>Marcá las bolillas a medida que salen. Mientras salen ves solo las jugadas con chance, y al terminar, las que ganaron premio.</p>
   </header>
 
   <section aria-labelledby="h-sorteo">
-    <div class="row">
-      <h2 id="h-sorteo">Sorteo en vivo</h2>
-      <span class="spacer"></span>
-      <div class="tabs" role="tablist" aria-label="Sorteo">
-        <button id="tab-oro" role="tab" aria-selected="true" data-draw="oro">Oro</button>
-        <button id="tab-rev" role="tab" aria-selected="false" data-draw="revancha">Revancha</button>
-      </div>
-    </div>
+    <h2 id="h-sorteo">Sorteo en vivo</h2>
     <div class="panel">
       <div class="drawn" id="drawn" aria-live="polite"></div>
       <form class="row" id="add-form" autocomplete="off">
@@ -181,14 +190,16 @@ textarea { width: 100%; min-height: 160px; resize: vertical; font-variant-numeri
       <div class="board" id="board" aria-label="Tablero del 1 al 48"></div>
       <div class="legend">
         <span><i style="background:var(--gold)"></i>Salió (tocá para sacarlo)</span>
+        <span><i style="background:var(--hit)"></i>Bolilla extra</span>
         <span><i style="box-shadow: inset 0 0 0 2px var(--hit)"></i>Está en alguna jugada tuya</span>
       </div>
       <div class="row">
-        <label for="goal" class="note">Mostrar jugadas con chance de</label>
+        <label for="goal" class="note">Mientras salen, mostrar las que pueden llegar a</label>
         <select id="goal">
-          <option value="3">3 o más aciertos</option>
-          <option value="4">4 o más aciertos</option>
-          <option value="5">5 aciertos</option>
+          <option value="2">cualquier premio (2 aciertos)</option>
+          <option value="3">3 aciertos o más</option>
+          <option value="4">4 aciertos o más</option>
+          <option value="5">5 aciertos (Pozo de Oro)</option>
         </select>
         <span class="spacer"></span>
         <span id="reset-zone"><button type="button" class="danger" id="reset">Reiniciar sorteo</button></span>
@@ -196,25 +207,28 @@ textarea { width: 100%; min-height: 160px; resize: vertical; font-variant-numeri
     </div>
   </section>
 
-  <section aria-labelledby="h-prem">
-    <h2 id="h-prem">Premios en este sorteo</h2>
-    <div class="prizes" id="prizes" aria-live="polite"></div>
-    <p class="note" id="prize-note"></p>
-  </section>
-
   <section aria-labelledby="h-res">
     <h2 id="h-res">Jugadas con chance</h2>
-    <div class="summary">
-      <div class="stat alive"><b id="s-alive">0</b><span>siguen con chance</span></div>
-      <div class="stat"><b id="s-out">0</b><span>quedaron afuera</span></div>
-      <div class="stat"><b id="s-left">5</b><span>bolillas por salir</span></div>
-    </div>
+    <div class="banner" id="banner" hidden></div>
+    <div class="summary" id="summary"></div>
     <div class="list" id="list"></div>
   </section>
 
   <section aria-labelledby="h-jug">
     <h2 id="h-jug">Mis jugadas</h2>
     <div class="panel">
+      <details>
+        <summary>Tabla de premios</summary>
+        <table class="paytable">
+          <tr><td>5 aciertos</td><td>Pozo de Oro</td></tr>
+          <tr><td>4 aciertos + bolilla extra</td><td>Pozo de Plata</td></tr>
+          <tr><td>4 aciertos</td><td>$ 9.000</td></tr>
+          <tr><td>3 aciertos + bolilla extra</td><td>$ 1.800</td></tr>
+          <tr><td>3 aciertos</td><td>$ 450</td></tr>
+          <tr><td>2 aciertos + bolilla extra</td><td>$ 180</td></tr>
+          <tr><td>2 aciertos</td><td>$ 65</td></tr>
+        </table>
+      </details>
       <p class="note">Una jugada por renglón, con números del 1 al 48 separados por espacio, coma o guion. Podés ponerle nombre antes de dos puntos, por ejemplo <code>Boleta del almacén: 3 11 24 37 45</code>.</p>
       <textarea id="tickets" aria-label="Mis jugadas" placeholder="3 11 24 37 45&#10;Boleta 2: 7, 15, 22, 30, 48"></textarea>
       <p class="error" id="parse-error" hidden></p>
@@ -228,17 +242,31 @@ textarea { width: 100%; min-height: 160px; resize: vertical; font-variant-numeri
 
 <script>
 (function () {
-  const MAX = 48, PICK = 5, KEY = "cincoDeOro.v1";
+  // 5 bolillas principales del 1 al 48, y después una bolilla extra.
+  const MAX = 48, PICK = 5, KEY = "cincoDeOro.v2", OLD_KEY = "cincoDeOro.v1";
   // Mis 64 jugadas. Se usan si todavía no guardé otras en este navegador.
   const DEFAULT_TICKETS = "Jugada 1: 01-05-06-19-30\nJugada 2: 01-07-10-29-39\nJugada 3: 01-09-27-32-48\nJugada 4: 01-12-23-28-46\nJugada 5: 01-22-27-35-43\nJugada 6: 01-22-35-42-48\nJugada 7: 02-05-20-33-40\nJugada 8: 02-25-26-31-44\nJugada 9: 03-12-24-43-45\nJugada 10: 03-21-25-38-41\nJugada 11: 03-22-37-42-43\nJugada 12: 04-15-18-28-32\nJugada 13: 04-28-33-38-46\nJugada 14: 05-07-11-19-33\nJugada 15: 05-19-26-32-38\nJugada 16: 06-09-22-25-38\nJugada 17: 06-14-20-41-42\nJugada 18: 06-36-40-45-48\nJugada 19: 07-10-14-28-32\nJugada 20: 07-13-21-29-31\nJugada 21: 09-10-14-20-33\nJugada 22: 09-10-25-38-47\nJugada 23: 09-11-18-31-44\nJugada 24: 09-16-35-39-45\nJugada 25: 10-12-24-43-46\nJugada 26: 10-19-28-34-42\nJugada 27: 11-13-17-21-35\nJugada 28: 11-14-22-31-43\nJugada 29: 11-15-33-36-41\nJugada 30: 11-30-32-44-45\nJugada 31: 12-25-27-31-38\nJugada 32: 13-16-22-25-26\nJugada 33: 14-24-32-44-48\nJugada 34: 15-18-27-42-46\nJugada 35: 16-19-30-41-43\nJugada 36: 16-26-29-39-45\nJugada 37: 19-22-38-39-46\nJugada 38: 21-25-27-29-31\nJugada 39: 22-23-26-29-44\nJugada 40: 24-26-36-40-42\nJugada 41: 29-34-35-36-47\nJugada 42: 01-07-19-32-38\nJugada 43: 02-07-17-44-47\nJugada 44: 03-09-12-20-43\nJugada 45: 03-13-23-26-29\nJugada 46: 04-07-24-25-43\nJugada 47: 05-11-16-44-47\nJugada 48: 05-14-29-31-36\nJugada 49: 06-12-15-30-40\nJugada 50: 06-20-21-32-47\nJugada 51: 09-13-15-29-47\nJugada 52: 09-22-26-38-43\nJugada 53: 12-19-20-39-40\nJugada 54: 13-14-17-19-30\nJugada 55: 13-14-38-42-48\nJugada 56: 17-19-27-29-40\nJugada 57: 17-29-32-45-46\nJugada 58: 18-31-33-38-43\nRivi: 04-12-18-25-33\nJoacopz: 20-46-17-24-04\nSalva: 29-11-08-18-05\nRabo: 37-21-08-15-05\nFerdez: 14-23-02-08-05\nJuntadita: 23-21-27-04-01";
   const $ = (id) => document.getElementById(id);
+  const money = (n) => "$ " + n.toLocaleString("es-UY");
 
-  let state = { tickets: DEFAULT_TICKETS, draw: "oro", drawn: { oro: [], revancha: [] }, goals: { oro: 3, revancha: 5 } };
+  // Premios según aciertos de las 5 principales y si la jugada tiene la bolilla extra.
+  function prizeFor(hits, extra) {
+    if (hits === 5) return { label: "Pozo de Oro", amount: null, rank: 1 };
+    if (hits === 4 && extra) return { label: "Pozo de Plata", amount: null, rank: 2 };
+    if (hits === 4) return { label: "4 aciertos", amount: 9000, rank: 3 };
+    if (hits === 3 && extra) return { label: "3 aciertos + extra", amount: 1800, rank: 4 };
+    if (hits === 3) return { label: "3 aciertos", amount: 450, rank: 5 };
+    if (hits === 2 && extra) return { label: "2 aciertos + extra", amount: 180, rank: 6 };
+    if (hits === 2) return { label: "2 aciertos", amount: 65, rank: 7 };
+    return null;
+  }
+
+  let state = { tickets: DEFAULT_TICKETS, drawn: [], goal: 2 };
   try {
     const saved = JSON.parse(localStorage.getItem(KEY) || "null");
+    const old = JSON.parse(localStorage.getItem(OLD_KEY) || "null");
     if (saved) state = Object.assign(state, saved);
-    if (!state.goals) state.goals = { oro: 3, revancha: 5 };
-    delete state.goal;
+    else if (old && old.tickets) state.tickets = old.tickets;
     if (!String(state.tickets || "").trim()) state.tickets = DEFAULT_TICKETS;
   } catch (e) {}
   let lastAdded = null;
@@ -265,147 +293,166 @@ textarea { width: 100%; min-height: 160px; resize: vertical; font-variant-numeri
     return { tickets: out, errors };
   }
 
-  function current() { return state.drawn[state.draw]; }
-
   function addNumber(n) {
     const err = $("add-error");
-    const list = current();
+    const list = state.drawn;
     if (!Number.isInteger(n) || n < 1 || n > MAX) { err.textContent = `Escribí un número del 1 al ${MAX}.`; err.hidden = false; return; }
     if (list.includes(n)) { err.textContent = `El ${n} ya está marcado.`; err.hidden = false; return; }
-    if (list.length >= PICK) { err.textContent = `Ya salieron las ${PICK} bolillas. Tocá una para corregirla.`; err.hidden = false; return; }
+    if (list.length > PICK) { err.textContent = "Ya están las 5 bolillas y la extra. Tocá una para corregirla."; err.hidden = false; return; }
     err.hidden = true;
     list.push(n); lastAdded = n;
     persist(); render();
   }
 
   function removeNumber(n) {
-    const list = current(), i = list.indexOf(n);
-    if (i >= 0) list.splice(i, 1);
+    const i = state.drawn.indexOf(n);
+    if (i >= 0) state.drawn.splice(i, 1);
     lastAdded = null; $("add-error").hidden = true;
     persist(); render();
   }
 
+  function stat(value, label, cls) {
+    return `<div class="stat ${cls || ""}"><b>${value}</b><span>${label}</span></div>`;
+  }
+
+  function ticketRow(t, main, extraBall, right) {
+    const row = document.createElement("div");
+    row.className = "ticket" + (t.hits >= 3 ? " got" : "");
+    const name = document.createElement("div");
+    name.className = "name"; name.textContent = t.name;
+    const nums = document.createElement("div");
+    nums.className = "nums";
+    t.nums.forEach((n) => {
+      const s = document.createElement("span");
+      s.className = "n" + (main.includes(n) ? " hit" : n === extraBall ? " extra" : "");
+      s.textContent = n;
+      nums.appendChild(s);
+    });
+    row.append(name, nums, right);
+    return row;
+  }
+
   function render() {
-    const drawn = current();
+    const drawn = state.drawn;
+    const main = drawn.slice(0, PICK);
+    const extraBall = drawn[PICK];
     const { tickets } = parseTickets(state.tickets);
     const mine = new Set(tickets.flatMap((t) => t.nums));
-    const left = PICK - drawn.length;
-    const goal = Number(state.goals[state.draw]);
-
-    document.querySelectorAll(".tabs button").forEach((b) =>
-      b.setAttribute("aria-selected", String(b.dataset.draw === state.draw)));
+    const left = PICK - main.length;
+    const goal = Number(state.goal);
     $("goal").value = String(goal);
 
+    // Bolillas
     const slots = $("drawn"); slots.innerHTML = "";
-    for (let i = 0; i < PICK; i++) {
+    for (let i = 0; i <= PICK; i++) {
+      const wrap = document.createElement("div"); wrap.className = "slot-wrap";
       const d = document.createElement("div");
       const n = drawn[i];
-      d.className = "slot" + (n ? " filled" : "") + (n && n === lastAdded ? " new" : "");
-      d.textContent = n ? n : i + 1;
-      if (!n) d.setAttribute("aria-label", `Bolilla ${i + 1} pendiente`);
-      slots.appendChild(d);
+      d.className = "slot" + (i === PICK ? " extra" : "") + (n ? " filled" : "") + (n && n === lastAdded ? " new" : "");
+      d.textContent = n ? n : i === PICK ? "+" : i + 1;
+      const cap = document.createElement("small"); cap.textContent = i === PICK ? "Extra" : "\u00a0";
+      wrap.append(d, cap);
+      slots.appendChild(wrap);
     }
+    $("num-input").placeholder = main.length < PICK ? `Bolilla ${main.length + 1} de 5` : drawn.length === PICK ? "Bolilla extra" : "Sorteo completo";
 
     const board = $("board"); board.innerHTML = "";
     for (let n = 1; n <= MAX; n++) {
       const b = document.createElement("button");
       b.type = "button";
       const on = drawn.includes(n);
-      b.className = "ball" + (on ? " on" : "") + (mine.has(n) ? " mine" : "");
+      b.className = "ball" + (on ? (n === extraBall ? " extra-on" : " on") : "") + (mine.has(n) ? " mine" : "");
       b.textContent = n;
       b.setAttribute("aria-pressed", String(on));
-      b.disabled = !on && drawn.length >= PICK;
+      b.disabled = !on && drawn.length > PICK;
       b.addEventListener("click", () => on ? removeNumber(n) : addNumber(n));
       board.appendChild(b);
     }
 
     const scored = tickets.map((t) => {
-      const hits = t.nums.filter((n) => drawn.includes(n)).length;
-      // Con jugadas de más de 5 números, el máximo posible igual es 5.
+      const hits = t.nums.filter((n) => main.includes(n)).length;
       const best = Math.min(PICK, hits + Math.min(left, t.nums.length - hits));
-      return { ...t, hits, alive: best >= goal };
+      const hasExtra = extraBall !== undefined && t.nums.includes(extraBall);
+      return { ...t, hits, best, hasExtra, prize: prizeFor(hits, hasExtra) };
     });
-    const prizes = $("prizes"); prizes.innerHTML = "";
-    [5, 4, 3].forEach((k) => {
-      const winners = scored.filter((t) => t.hits === k);
-      const box = document.createElement("div");
-      box.className = "prize" + (winners.length ? " got" : "");
-      const b = document.createElement("b"); b.textContent = winners.length;
-      const tier = document.createElement("span"); tier.className = "tier"; tier.textContent = `${k} aciertos`;
-      const who = document.createElement("span"); who.className = "who";
-      who.textContent = winners.length ? winners.map((t) => t.name).join(", ") : "Ninguna por ahora";
-      box.append(b, tier, who);
-      prizes.appendChild(box);
-    });
-    $("prize-note").textContent = state.draw === "revancha"
-      ? "En la Revancha solo se paga con 5 aciertos."
-      : "En el Oro hay premio desde 3 aciertos.";
-
-    const alive = scored.filter((t) => t.alive).sort((a, b) => b.hits - a.hits);
-
-    $("s-alive").textContent = alive.length;
-    $("s-out").textContent = scored.length - alive.length;
-    $("s-left").textContent = left;
 
     const list = $("list"); list.innerHTML = "";
+    const banner = $("banner");
+
     if (!tickets.length) {
+      $("h-res").textContent = "Jugadas con chance";
+      banner.hidden = true; $("summary").innerHTML = "";
       list.innerHTML = '<div class="empty">Todavía no cargaste jugadas. Pegalas abajo en "Mis jugadas" y tocá Guardar.</div>';
-    } else if (!alive.length) {
-      list.innerHTML = `<div class="empty">Ninguna jugada puede llegar a ${goal === 5 ? "5 aciertos" : goal + " o más aciertos"} en este sorteo.</div>`;
+      return;
     }
-    alive.forEach((t) => {
-      const row = document.createElement("div");
-      row.className = "ticket" + (t.hits >= 3 ? " got" : "");
-      const name = document.createElement("div");
-      name.className = "name"; name.textContent = t.name;
-      const nums = document.createElement("div");
-      nums.className = "nums";
-      t.nums.forEach((n) => {
-        const s = document.createElement("span");
-        s.className = "n" + (drawn.includes(n) ? " hit" : "");
-        s.textContent = n;
-        nums.appendChild(s);
+
+    if (left > 0) {
+      // Mientras salen las 5: solo las que todavía pueden llegar al objetivo.
+      $("h-res").textContent = "Jugadas con chance";
+      banner.hidden = true;
+      const alive = scored.filter((t) => t.best >= goal).sort((a, b) => b.hits - a.hits);
+      $("summary").innerHTML = stat(alive.length, "siguen con chance", "alive") +
+        stat(scored.length - alive.length, "quedaron afuera") + stat(left, "bolillas por salir");
+      if (!alive.length) list.innerHTML = '<div class="empty">Ninguna jugada puede llegar a ese premio en este sorteo.</div>';
+      alive.forEach((t) => {
+        const pill = document.createElement("span");
+        pill.className = "pill" + (t.hits >= 3 ? " win" : "");
+        pill.textContent = `${t.hits} de ${main.length}`;
+        list.appendChild(ticketRow(t, main, extraBall, pill));
       });
-      const pill = document.createElement("span");
-      const done = left === 0;
-      pill.className = "pill" + (t.hits >= 3 ? " win" : "");
-      pill.textContent = t.hits >= 3
-        ? `¡${t.hits} aciertos!`
-        : done
-          ? `${t.hits} acierto${t.hits === 1 ? "" : "s"}`
-          : `${t.hits} de ${drawn.length} · le faltan ${Math.max(0, goal - t.hits)}`;
-      row.append(name, nums, pill);
-      list.appendChild(row);
+      return;
+    }
+
+    // Salieron las 5: mostrar las que ganaron premio.
+    const winners = scored.filter((t) => t.prize).sort((a, b) => a.prize.rank - b.prize.rank);
+    const total = winners.reduce((sum, t) => sum + (t.prize.amount || 0), 0);
+    const pozos = winners.filter((t) => t.prize.amount === null);
+    $("h-res").textContent = extraBall === undefined ? "Premios (falta la bolilla extra)" : "Jugadas con premio";
+    banner.hidden = false;
+    if (extraBall === undefined) {
+      const couldUp = scored.filter((t) => t.hits >= 2 && t.hits <= 4).length;
+      banner.textContent = `Salieron las 5. Cargá la bolilla extra: ${couldUp} jugada${couldUp === 1 ? "" : "s"} pueden mejorar su premio con ella.`;
+    } else if (pozos.length) {
+      banner.textContent = `¡Ganaste ${pozos.map((t) => t.prize.label).join(" y ")}! (${pozos.map((t) => t.name).join(", ")})`;
+    } else if (winners.length) {
+      banner.textContent = `Ganaste ${money(total)} en ${winners.length} jugada${winners.length === 1 ? "" : "s"}.`;
+    } else {
+      banner.textContent = "Esta vez ninguna jugada llegó a 2 aciertos.";
+    }
+    $("summary").innerHTML = stat(winners.length, "jugadas con premio", "alive") +
+      stat(money(total), pozos.length ? "en premios fijos + pozo" : "en premios fijos") +
+      stat(scored.length - winners.length, "sin premio");
+    if (!winners.length) list.innerHTML = '<div class="empty">Ninguna jugada ganó premio.</div>';
+    winners.forEach((t) => {
+      const tag = document.createElement("div");
+      tag.className = "prize-tag";
+      tag.innerHTML = `<b>${t.prize.amount === null ? t.prize.label : money(t.prize.amount)}</b><span>${t.prize.amount === null ? "pozo acumulado" : t.prize.label}</span>`;
+      list.appendChild(ticketRow(t, main, extraBall, tag));
     });
   }
 
   // Eventos
   $("add-form").addEventListener("submit", (e) => {
     e.preventDefault();
-    const v = $("num-input").value.trim();
-    addNumber(Number(v));
+    addNumber(Number($("num-input").value.trim()));
     $("num-input").value = ""; $("num-input").focus();
   });
   $("undo").addEventListener("click", () => {
-    const list = current();
-    if (list.length) removeNumber(list[list.length - 1]);
+    if (state.drawn.length) removeNumber(state.drawn[state.drawn.length - 1]);
   });
-  document.querySelectorAll(".tabs button").forEach((b) =>
-    b.addEventListener("click", () => { state.draw = b.dataset.draw; lastAdded = null; persist(); render(); }));
-  $("goal").addEventListener("change", (e) => { state.goals[state.draw] = Number(e.target.value); persist(); render(); });
+  $("goal").addEventListener("change", (e) => { state.goal = Number(e.target.value); persist(); render(); });
 
   // Confirmación dentro de la página (el navegador del artifact no muestra confirm()).
   $("reset-zone").addEventListener("click", (e) => {
     const zone = $("reset-zone");
     const id = e.target.id;
     if (id === "reset") {
-      const label = state.draw === "oro" ? "Oro" : "Revancha";
-      zone.innerHTML = `<span class="confirm">¿Borrar los números del ${label}?
+      zone.innerHTML = `<span class="confirm">¿Borrar los números del sorteo?
         <button type="button" class="danger" id="reset-yes">Sí, borrar</button>
         <button type="button" id="reset-no">Cancelar</button></span>`;
       return;
     }
-    if (id === "reset-yes") { state.drawn[state.draw] = []; lastAdded = null; persist(); render(); }
+    if (id === "reset-yes") { state.drawn = []; lastAdded = null; persist(); render(); }
     if (id === "reset-yes" || id === "reset-no") {
       zone.innerHTML = '<button type="button" class="danger" id="reset">Reiniciar sorteo</button>';
     }
