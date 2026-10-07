@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mis jugadas del 5 de Oro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: una columna tipo "pizarra de sorteo": arriba los números que salieron, abajo las jugadas que siguen vivas. */
+:root {
+  --bg: #f6f4ee;
+  --surface: #ffffff;
+  --ink: #1d1b16;
+  --muted: #6d675a;
+  --line: #e2ddcf;
+  --gold: #c9971c;
+  --gold-soft: #f6e7b8;
+  --gold-ink: #3b2c05;
+  --hit: #1f7a4a;
+  --hit-soft: #dcf0e3;
+  --danger: #b33a2a;
+  --font-display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+  --font-body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15140f; --surface: #1f1d17; --ink: #f1ecdf; --muted: #a59e8c; --line: #343026;
+    --gold: #e2b33c; --gold-soft: #3d3112; --gold-ink: #fbefc9;
+    --hit: #5fcf8f; --hit-soft: #183526; --danger: #f07b6a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15140f; --surface: #1f1d17; --ink: #f1ecdf; --muted: #a59e8c; --line: #343026;
+  --gold: #e2b33c; --gold-soft: #3d3112; --gold-ink: #fbefc9;
+  --hit: #5fcf8f; --hit-soft: #183526; --danger: #f07b6a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+  padding: env(safe-area-inset-top, 0px) 16px calc(32px + env(safe-area-inset-bottom, 0px));
+}
+.wrap { max-width: 760px; margin: 0 auto; display: grid; gap: 20px; padding-block: 20px; }
+header h1 {
+  font-family: var(--font-display); font-weight: 800; font-size: 2.4rem; line-height: 1;
+  margin: 0; letter-spacing: .01em; text-transform: uppercase;
+}
+header h1 span { color: var(--gold); }
+header p { margin: 6px 0 0; color: var(--muted); }
+section { display: grid; gap: 12px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 14px; }
+h2 { font-size: .78rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 0; font-weight: 700; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.spacer { flex: 1; }
+
+button, select, input, textarea { font: inherit; color: inherit; }
+button {
+  border: 1px solid var(--line); background: var(--surface); border-radius: 10px;
+  padding: 8px 14px; cursor: pointer; font-weight: 600;
+}
+button:hover { border-color: var(--gold); }
+button.primary { background: var(--gold); border-color: var(--gold); color: #1d1b16; }
+button.danger { color: var(--danger); }
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, .ball:focus-visible {
+  outline: 3px solid var(--gold); outline-offset: 2px;
+}
+input, textarea, select {
+  background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px;
+}
+textarea { width: 100%; min-height: 160px; resize: vertical; font-variant-numeric: tabular-nums; line-height: 1.6; }
+
+.tabs { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; background: var(--bg); }
+.tabs button { border: 0; border-radius: 999px; background: transparent; padding: 6px 16px; }
+.tabs button[aria-selected="true"] { background: var(--ink); color: var(--bg); }
+
+.drawn { display: flex; gap: 10px; flex-wrap: wrap; }
+.slot {
+  width: 54px; height: 54px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: var(--font-display); font-weight: 800; font-size: 1.6rem;
+  border: 2px dashed var(--line); color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.slot.filled {
+  border: 0; color: var(--gold-ink);
+  background: radial-gradient(circle at 32% 28%, #fff6d6 0 12%, var(--gold) 55%, #9a7210 100%);
+  box-shadow: inset 0 -3px 6px rgba(0,0,0,.18);
+}
+@media (prefers-reduced-motion: no-preference) { .slot.filled.new { animation: pop .35s ease-out; } }
+@keyframes pop { from { transform: scale(.4); } to { transform: scale(1); } }
+
+.board { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
+.ball {
+  aspect-ratio: 1; max-width: 100%; border-radius: 50%; border: 1px solid var(--line);
+  background: var(--bg); font-family: var(--font-display); font-weight: 600; font-size: 1.15rem;
+  padding: 0; display: grid; place-items: center; font-variant-numeric: tabular-nums;
+}
+.ball.on { background: var(--gold); border-color: var(--gold); color: #1d1b16; font-weight: 800; }
+.ball.mine { box-shadow: inset 0 0 0 2px var(--hit); }
+.ball:disabled { opacity: .35; cursor: not-allowed; }
+.legend { font-size: .82rem; color: var(--muted); display: flex; gap: 14px; flex-wrap: wrap; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: -1px; margin-right: 5px; }
+
+.summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.stat b { display: block; font-family: var(--font-display); font-size: 2rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.stat span { font-size: .8rem; color: var(--muted); }
+.stat.alive b { color: var(--hit); }
+
+.list { display: grid; gap: 8px; }
+.ticket {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px;
+}
+.ticket .name { font-weight: 600; min-width: 0; flex: 1 1 120px; overflow-wrap: anywhere; }
+.ticket .nums { display: flex; gap: 6px; flex-wrap: wrap; }
+.n {
+  width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+  border: 1px solid var(--line); font-weight: 700; font-variant-numeric: tabular-nums; font-size: .95rem;
+}
+.n.hit { background: var(--hit); border-color: var(--hit); color: var(--surface); }
+.pill {
+  font-size: .78rem; font-weight: 700; padding: 3px 10px; border-radius: 999px;
+  background: var(--hit-soft); color: var(--hit); white-space: nowrap;
+}
+.pill.win { background: var(--gold); color: #1d1b16; }
+.empty { color: var(--muted); text-align: center; padding: 18px; border: 1px dashed var(--line); border-radius: 12px; }
+.note { font-size: .85rem; color: var(--muted); margin: 0; }
+.error { color: var(--danger); font-size: .88rem; margin: 0; }
+.confirm { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: .9rem; }
+
+@media (max-width: 480px) {
+  .slot { width: 46px; height: 46px; font-size: 1.35rem; }
+  .board { grid-template-columns: repeat(6, 1fr); }
+  .summary .stat b { font-size: 1.6rem; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Mis jugadas <span>5 de Oro</span></h1>
+    <p>Marcá las bolillas a medida que salen. Solo te quedan a la vista las jugadas que todavía pueden ganar.</p>
+  </header>
+
+  <section aria-labelledby="h-sorteo">
+    <div class="row">
+      <h2 id="h-sorteo">Sorteo en vivo</h2>
+      <span class="spacer"></span>
+      <div class="tabs" role="tablist" aria-label="Sorteo">
+        <button id="tab-oro" role="tab" aria-selected="true" data-draw="oro">Oro</button>
+        <button id="tab-rev" role="tab" aria-selected="false" data-draw="revancha">Revancha</button>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="drawn" id="drawn" aria-live="polite"></div>
+      <form class="row" id="add-form" autocomplete="off">
+        <input id="num-input" type="number" inputmode="numeric" min="1" max="48" placeholder="Número que salió" aria-label="Número que salió" style="flex:1 1 160px; min-width:0">
+        <button class="primary" type="submit">Agregar</button>
+        <button type="button" id="undo">Deshacer último</button>
+      </form>
+      <p class="error" id="add-error" hidden></p>
+      <div class="board" id="board" aria-label="Tablero del 1 al 48"></div>
+      <div class="legend">
+        <span><i style="background:var(--gold)"></i>Salió (tocá para sacarlo)</span>
+        <span><i style="box-shadow: inset 0 0 0 2px var(--hit)"></i>Está en alguna jugada tuya</span>
+      </div>
+      <div class="row">
+        <label for="goal" class="note">Mostrar jugadas con chance de</label>
+        <select id="goal">
+          <option value="5">5 aciertos</option>
+          <option value="4">4 o más aciertos</option>
+          <option value="3">3 o más aciertos</option>
+        </select>
+        <span class="spacer"></span>
+        <span id="reset-zone"><button type="button" class="danger" id="reset">Reiniciar sorteo</button></span>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-res">
+    <h2 id="h-res">Jugadas con chance</h2>
+    <div class="summary">
+      <div class="stat alive"><b id="s-alive">0</b><span>siguen con chance</span></div>
+      <div class="stat"><b id="s-out">0</b><span>quedaron afuera</span></div>
+      <div class="stat"><b id="s-left">5</b><span>bolillas por salir</span></div>
+    </div>
+    <div class="list" id="list"></div>
+  </section>
+
+  <section aria-labelledby="h-jug">
+    <h2 id="h-jug">Mis jugadas</h2>
+    <div class="panel">
+      <p class="note">Una jugada por renglón, con números del 1 al 48 separados por espacio, coma o guion. Podés ponerle nombre antes de dos puntos, por ejemplo <code>Boleta del almacén: 3 11 24 37 45</code>.</p>
+      <textarea id="tickets" aria-label="Mis jugadas" placeholder="3 11 24 37 45&#10;Boleta 2: 7, 15, 22, 30, 48"></textarea>
+      <p class="error" id="parse-error" hidden></p>
+      <div class="row">
+        <button type="button" class="primary" id="save">Guardar jugadas</button>
+        <span class="note" id="saved-msg"></span>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  const MAX = 48, PICK = 5, KEY = "cincoDeOro.v1";
+  const $ = (id) => document.getElementById(id);
+
+  let state = { tickets: "", draw: "oro", drawn: { oro: [], revancha: [] }, goal: 5 };
+  try {
+    const saved = JSON.parse(localStorage.getItem(KEY) || "null");
+    if (saved) state = Object.assign(state, saved);
+  } catch (e) {}
+  let lastAdded = null;
+
+  function persist() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+  }
+
+  function parseTickets(text) {
+    const out = [], errors = [];
+    text.split(/\r?\n/).forEach((raw, i) => {
+      const line = raw.trim();
+      if (!line) return;
+      let name = "", body = line;
+      const colon = line.indexOf(":");
+      if (colon >= 0) { name = line.slice(0, colon).trim(); body = line.slice(colon + 1); }
+      const nums = (body.match(/\d+/g) || []).map(Number);
+      const uniq = [...new Set(nums)];
+      if (uniq.length < PICK) { errors.push(`Renglón ${i + 1}: tiene ${uniq.length} números distintos, se necesitan al menos ${PICK}.`); return; }
+      if (uniq.some((n) => n < 1 || n > MAX)) { errors.push(`Renglón ${i + 1}: hay números fuera del 1 al ${MAX}.`); return; }
+      if (uniq.length !== nums.length) errors.push(`Renglón ${i + 1}: tenía números repetidos, los conté una sola vez.`);
+      out.push({ name: name || `Jugada ${out.length + 1}`, nums: uniq.sort((a, b) => a - b) });
+    });
+    return { tickets: out, errors };
+  }
+
+  function current() { return state.drawn[state.draw]; }
+
+  function addNumber(n) {
+    const err = $("add-error");
+    const list = current();
+    if (!Number.isInteger(n) || n < 1 || n > MAX) { err.textContent = `Escribí un número del 1 al ${MAX}.`; err.hidden = false; return; }
+    if (list.includes(n)) { err.textContent = `El ${n} ya está marcado.`; err.hidden = false; return; }
+    if (list.length >= PICK) { err.textContent = `Ya salieron las ${PICK} bolillas. Tocá una para corregirla.`; err.hidden = false; return; }
+    err.hidden = true;
+    list.push(n); lastAdded = n;
+    persist(); render();
+  }
+
+  function removeNumber(n) {
+    const list = current(), i = list.indexOf(n);
+    if (i >= 0) list.splice(i, 1);
+    lastAdded = null; $("add-error").hidden = true;
+    persist(); render();
+  }
+
+  function render() {
+    const drawn = current();
+    const { tickets } = parseTickets(state.tickets);
+    const mine = new Set(tickets.flatMap((t) => t.nums));
+    const left = PICK - drawn.length;
+    const goal = Number(state.goal);
+
+    document.querySelectorAll(".tabs button").forEach((b) =>
+      b.setAttribute("aria-selected", String(b.dataset.draw === state.draw)));
+    $("goal").value = String(goal);
+
+    const slots = $("drawn"); slots.innerHTML = "";
+    for (let i = 0; i < PICK; i++) {
+      const d = document.createElement("div");
+      const n = drawn[i];
+      d.className = "slot" + (n ? " filled" : "") + (n && n === lastAdded ? " new" : "");
+      d.textContent = n ? n : i + 1;
+      if (!n) d.setAttribute("aria-label", `Bolilla ${i + 1} pendiente`);
+      slots.appendChild(d);
+    }
+
+    const board = $("board"); board.innerHTML = "";
+    for (let n = 1; n <= MAX; n++) {
+      const b = document.createElement("button");
+      b.type = "button";
+      const on = drawn.includes(n);
+      b.className = "ball" + (on ? " on" : "") + (mine.has(n) ? " mine" : "");
+      b.textContent = n;
+      b.setAttribute("aria-pressed", String(on));
+      b.disabled = !on && drawn.length >= PICK;
+      b.addEventListener("click", () => on ? removeNumber(n) : addNumber(n));
+      board.appendChild(b);
+    }
+
+    const scored = tickets.map((t) => {
+      const hits = t.nums.filter((n) => drawn.includes(n)).length;
+      // Con jugadas de más de 5 números, el máximo posible igual es 5.
+      const best = Math.min(PICK, hits + Math.min(left, t.nums.length - hits));
+      return { ...t, hits, alive: best >= goal };
+    });
+    const alive = scored.filter((t) => t.alive).sort((a, b) => b.hits - a.hits);
+
+    $("s-alive").textContent = alive.length;
+    $("s-out").textContent = scored.length - alive.length;
+    $("s-left").textContent = left;
+
+    const list = $("list"); list.innerHTML = "";
+    if (!tickets.length) {
+      list.innerHTML = '<div class="empty">Todavía no cargaste jugadas. Pegalas abajo en "Mis jugadas" y tocá Guardar.</div>';
+    } else if (!alive.length) {
+      list.innerHTML = `<div class="empty">Ninguna jugada puede llegar a ${goal === 5 ? "5 aciertos" : goal + " o más aciertos"} en este sorteo.</div>`;
+    }
+    alive.forEach((t) => {
+      const row = document.createElement("div");
+      row.className = "ticket";
+      const name = document.createElement("div");
+      name.className = "name"; name.textContent = t.name;
+      const nums = document.createElement("div");
+      nums.className = "nums";
+      t.nums.forEach((n) => {
+        const s = document.createElement("span");
+        s.className = "n" + (drawn.includes(n) ? " hit" : "");
+        s.textContent = n;
+        nums.appendChild(s);
+      });
+      const pill = document.createElement("span");
+      const done = left === 0;
+      pill.className = "pill" + (done && t.hits >= goal ? " win" : "");
+      pill.textContent = done
+        ? `${t.hits} acierto${t.hits === 1 ? "" : "s"}`
+        : `${t.hits} de ${drawn.length} · le faltan ${Math.max(0, goal - t.hits)}`;
+      row.append(name, nums, pill);
+      list.appendChild(row);
+    });
+  }
+
+  // Eventos
+  $("add-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const v = $("num-input").value.trim();
+    addNumber(Number(v));
+    $("num-input").value = ""; $("num-input").focus();
+  });
+  $("undo").addEventListener("click", () => {
+    const list = current();
+    if (list.length) removeNumber(list[list.length - 1]);
+  });
+  document.querySelectorAll(".tabs button").forEach((b) =>
+    b.addEventListener("click", () => { state.draw = b.dataset.draw; lastAdded = null; persist(); render(); }));
+  $("goal").addEventListener("change", (e) => { state.goal = Number(e.target.value); persist(); render(); });
+
+  // Confirmación dentro de la página (el navegador del artifact no muestra confirm()).
+  $("reset-zone").addEventListener("click", (e) => {
+    const zone = $("reset-zone");
+    const id = e.target.id;
+    if (id === "reset") {
+      const label = state.draw === "oro" ? "Oro" : "Revancha";
+      zone.innerHTML = `<span class="confirm">¿Borrar los números del ${label}?
+        <button type="button" class="danger" id="reset-yes">Sí, borrar</button>
+        <button type="button" id="reset-no">Cancelar</button></span>`;
+      return;
+    }
+    if (id === "reset-yes") { state.drawn[state.draw] = []; lastAdded = null; persist(); render(); }
+    if (id === "reset-yes" || id === "reset-no") {
+      zone.innerHTML = '<button type="button" class="danger" id="reset">Reiniciar sorteo</button>';
+    }
+  });
+
+  $("tickets").value = state.tickets;
+  $("save").addEventListener("click", () => {
+    const text = $("tickets").value;
+    const { tickets, errors } = parseTickets(text);
+    const err = $("parse-error");
+    err.hidden = !errors.length;
+    err.textContent = errors.join(" ");
+    state.tickets = text; persist(); render();
+    $("saved-msg").textContent = `Guardadas ${tickets.length} jugada${tickets.length === 1 ? "" : "s"}.`;
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
