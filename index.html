@@ -40,6 +40,7 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; }
 body {
   background: var(--bg); color: var(--ink);
@@ -167,6 +168,25 @@ textarea { width: 100%; min-height: 160px; resize: vertical; font-variant-numeri
 .paytable td { padding: 6px 0; border-bottom: 1px solid var(--line); }
 .paytable td:last-child { text-align: right; font-weight: 600; }
 .paytable tr:last-child td { border-bottom: 0; }
+.modal {
+  position: fixed; inset: 0; z-index: 10; background: rgba(20, 16, 6, .6);
+  display: grid; place-items: center; padding: 16px;
+  padding-top: calc(16px + env(safe-area-inset-top, 0px)); padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+}
+.modal-card {
+  width: min(420px, 100%); max-height: 100%; overflow-y: auto;
+  background: var(--surface); border-radius: 18px; padding: 24px 20px;
+  display: grid; gap: 12px; text-align: center; border: 3px solid var(--line);
+}
+.modal-card.win { border-color: var(--gold); }
+.modal-card h3 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 2rem; line-height: 1.05; text-transform: uppercase; text-wrap: balance; }
+.modal-card.win h3 { color: var(--gold); }
+.modal-card .big { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 3.2rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.modal-card.lose .big { color: var(--muted); }
+.modal-card ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; text-align: left; }
+.modal-card li { display: flex; justify-content: space-between; gap: 10px; padding: 8px 10px; border-radius: 10px; background: var(--bg); }
+.modal-card li b { white-space: nowrap; font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: no-preference) { .modal:not([hidden]) .modal-card { animation: pop .3s ease-out; } }
 details summary { cursor: pointer; font-weight: 600; }
 </style>
 </head>
@@ -174,7 +194,7 @@ details summary { cursor: pointer; font-weight: 600; }
 <div class="wrap">
   <header>
     <h1>Mis jugadas <span>5 de Oro</span></h1>
-    <p>Marcá las bolillas a medida que salen. Mientras salen ves solo las jugadas con chance, y al terminar, las que ganaron premio.</p>
+    <p>Marcá las bolillas a medida que salen. Mientras salen ves solo las jugadas con chance. Al cargar la bolilla extra te aparece si ganaste y cuánto.</p>
   </header>
 
   <section aria-labelledby="h-sorteo">
@@ -209,7 +229,7 @@ details summary { cursor: pointer; font-weight: 600; }
 
   <section aria-labelledby="h-res">
     <h2 id="h-res">Jugadas con chance</h2>
-    <div class="banner" id="banner" hidden></div>
+    <button type="button" class="primary" id="show-result" hidden>Ver resultado</button>
     <div class="summary" id="summary"></div>
     <div class="list" id="list"></div>
   </section>
@@ -238,6 +258,15 @@ details summary { cursor: pointer; font-weight: 600; }
       </div>
     </div>
   </section>
+</div>
+
+<div class="modal" id="result" hidden>
+  <div class="modal-card" id="result-card" role="dialog" aria-modal="true" aria-labelledby="result-title">
+    <h3 id="result-title"></h3>
+    <p class="big" id="result-big"></p>
+    <ul id="result-detail"></ul>
+    <button type="button" class="primary" id="result-close">Cerrar</button>
+  </div>
 </div>
 
 <script>
@@ -302,6 +331,7 @@ details summary { cursor: pointer; font-weight: 600; }
     err.hidden = true;
     list.push(n); lastAdded = n;
     persist(); render();
+    if (list.length > PICK) openResult();
   }
 
   function removeNumber(n) {
@@ -377,59 +407,77 @@ details summary { cursor: pointer; font-weight: 600; }
     });
 
     const list = $("list"); list.innerHTML = "";
-    const banner = $("banner");
 
     if (!tickets.length) {
       $("h-res").textContent = "Jugadas con chance";
-      banner.hidden = true; $("summary").innerHTML = "";
+      $("show-result").hidden = true; $("summary").innerHTML = "";
       list.innerHTML = '<div class="empty">Todavía no cargaste jugadas. Pegalas abajo en "Mis jugadas" y tocá Guardar.</div>';
       return;
     }
 
-    if (left > 0) {
-      // Mientras salen las 5: solo las que todavía pueden llegar al objetivo.
-      $("h-res").textContent = "Jugadas con chance";
-      banner.hidden = true;
-      const alive = scored.filter((t) => t.best >= goal).sort((a, b) => b.hits - a.hits);
-      $("summary").innerHTML = stat(alive.length, "siguen con chance", "alive") +
-        stat(scored.length - alive.length, "quedaron afuera") + stat(left, "bolillas por salir");
-      if (!alive.length) list.innerHTML = '<div class="empty">Ninguna jugada puede llegar a ese premio en este sorteo.</div>';
-      alive.forEach((t) => {
-        const pill = document.createElement("span");
-        pill.className = "pill" + (t.hits >= 3 ? " win" : "");
-        pill.textContent = `${t.hits} de ${main.length}`;
-        list.appendChild(ticketRow(t, main, extraBall, pill));
-      });
-      return;
+    const complete = drawn.length > PICK;
+    // Solo las jugadas que todavía pueden ganar. Con el sorteo completo, son las que ganaron.
+    const alive = scored
+      .filter((t) => complete ? t.prize : t.best >= goal)
+      .sort((a, b) => complete ? a.prize.rank - b.prize.rank : b.hits - a.hits);
+    $("h-res").textContent = complete ? "Jugadas ganadoras" : "Jugadas con chance";
+    $("show-result").hidden = !complete;
+    $("summary").innerHTML = stat(alive.length, complete ? "ganaron premio" : "siguen con chance", "alive") +
+      stat(scored.length - alive.length, complete ? "sin premio" : "quedaron afuera") +
+      stat(left > 0 ? left : complete ? 0 : "Extra", left > 0 ? "bolillas por salir" : complete ? "sorteo completo" : "falta la bolilla extra");
+    if (!alive.length) {
+      list.innerHTML = `<div class="empty">${complete ? "Ninguna jugada ganó premio." : "Ninguna jugada puede llegar a ese premio en este sorteo."}</div>`;
     }
+    alive.forEach((t) => {
+      let right;
+      if (complete) {
+        right = document.createElement("div");
+        right.className = "prize-tag";
+        right.innerHTML = `<b>${t.prize.amount === null ? t.prize.label : money(t.prize.amount)}</b><span>${t.prize.amount === null ? "pozo acumulado" : t.prize.label}</span>`;
+      } else {
+        right = document.createElement("span");
+        right.className = "pill" + (t.hits >= 3 ? " win" : "");
+        right.textContent = `${t.hits} de ${main.length}`;
+      }
+      list.appendChild(ticketRow(t, main, extraBall, right));
+    });
+    lastScored = scored;
+  }
 
-    // Salieron las 5: mostrar las que ganaron premio.
-    const winners = scored.filter((t) => t.prize).sort((a, b) => a.prize.rank - b.prize.rank);
+  // Cartel con el resultado final.
+  let lastScored = [];
+  function openResult() {
+    const winners = lastScored.filter((t) => t.prize).sort((a, b) => a.prize.rank - b.prize.rank);
     const total = winners.reduce((sum, t) => sum + (t.prize.amount || 0), 0);
     const pozos = winners.filter((t) => t.prize.amount === null);
-    $("h-res").textContent = extraBall === undefined ? "Premios (falta la bolilla extra)" : "Jugadas con premio";
-    banner.hidden = false;
-    if (extraBall === undefined) {
-      const couldUp = scored.filter((t) => t.hits >= 2 && t.hits <= 4).length;
-      banner.textContent = `Salieron las 5. Cargá la bolilla extra: ${couldUp} jugada${couldUp === 1 ? "" : "s"} pueden mejorar su premio con ella.`;
-    } else if (pozos.length) {
-      banner.textContent = `¡Ganaste ${pozos.map((t) => t.prize.label).join(" y ")}! (${pozos.map((t) => t.name).join(", ")})`;
-    } else if (winners.length) {
-      banner.textContent = `Ganaste ${money(total)} en ${winners.length} jugada${winners.length === 1 ? "" : "s"}.`;
+    const card = $("result-card");
+    const title = $("result-title"), big = $("result-big"), detail = $("result-detail");
+    detail.innerHTML = "";
+    if (!winners.length) {
+      card.className = "modal-card lose";
+      title.textContent = "No ganaste nada";
+      big.textContent = "$ 0";
+      detail.innerHTML = "<li>Ninguna jugada llegó a 2 aciertos. Suerte la próxima.</li>";
     } else {
-      banner.textContent = "Esta vez ninguna jugada llegó a 2 aciertos.";
+      card.className = "modal-card win";
+      title.textContent = pozos.length ? `¡Ganaste el ${pozos.map((t) => t.prize.label).join(" y el ")}!` : "¡Ganaste!";
+      big.textContent = pozos.length ? (total ? `Pozo + ${money(total)}` : "Pozo") : money(total);
+      winners.forEach((t) => {
+        const li = document.createElement("li");
+        const a = document.createElement("span"); a.textContent = `${t.name} · ${t.prize.label}`;
+        const b = document.createElement("b"); b.textContent = t.prize.amount === null ? t.prize.label : money(t.prize.amount);
+        li.append(a, b);
+        detail.appendChild(li);
+      });
     }
-    $("summary").innerHTML = stat(winners.length, "jugadas con premio", "alive") +
-      stat(money(total), pozos.length ? "en premios fijos + pozo" : "en premios fijos") +
-      stat(scored.length - winners.length, "sin premio");
-    if (!winners.length) list.innerHTML = '<div class="empty">Ninguna jugada ganó premio.</div>';
-    winners.forEach((t) => {
-      const tag = document.createElement("div");
-      tag.className = "prize-tag";
-      tag.innerHTML = `<b>${t.prize.amount === null ? t.prize.label : money(t.prize.amount)}</b><span>${t.prize.amount === null ? "pozo acumulado" : t.prize.label}</span>`;
-      list.appendChild(ticketRow(t, main, extraBall, tag));
-    });
+    $("result").hidden = false;
+    $("result-close").focus();
   }
+  function closeResult() { $("result").hidden = true; }
+  $("result-close").addEventListener("click", closeResult);
+  $("show-result").addEventListener("click", openResult);
+  $("result").addEventListener("click", (e) => { if (e.target.id === "result") closeResult(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeResult(); });
 
   // Eventos
   $("add-form").addEventListener("submit", (e) => {
